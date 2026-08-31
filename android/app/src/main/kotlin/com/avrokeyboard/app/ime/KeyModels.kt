@@ -34,4 +34,5 @@ sealed class KeyAction {
     data class Commit(val text: String) : KeyAction()
     data object Backspace : KeyAction()
     data object Enter : KeyAction()
+    data class ModeChanged(val from: KeyboardLanguage, val to: KeyboardLanguage) : KeyAction()
 }
