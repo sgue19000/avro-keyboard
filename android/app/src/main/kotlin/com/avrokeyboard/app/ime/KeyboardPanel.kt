@@ -47,7 +47,21 @@ class KeyboardPanel(
     fun onHostStarted() {
         night = isNight()
         applyPalette()
+        requestLayout()
         invalidate()
+    }
+
+    fun setMode(mode: KeyboardLanguage, notify: Boolean) {
+        if (language == mode) {
+            rebuild()
+            return
+        }
+        val from = language
+        language = mode
+        page = KeyboardPage.LETTERS
+        shiftOn = false
+        rebuild()
+        if (notify) onAction(KeyAction.ModeChanged(from, mode))
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -139,14 +153,12 @@ class KeyboardPanel(
                 rebuild()
             }
             KeyKind.LANGUAGE -> {
-                language = when (language) {
+                val next = when (language) {
                     KeyboardLanguage.ENGLISH -> KeyboardLanguage.BANGLA
                     KeyboardLanguage.BANGLA -> KeyboardLanguage.AVRO
                     KeyboardLanguage.AVRO -> KeyboardLanguage.ENGLISH
                 }
-                page = KeyboardPage.LETTERS
-                shiftOn = false
-                rebuild()
+                setMode(next, notify = true)
             }
         }
     }
