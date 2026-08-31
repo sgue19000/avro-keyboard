@@ -2,15 +2,12 @@
 
 ```
 Flutter settings (optional)
-  MethodChannel openInputMethodSettings / openInputMethodPicker
         |
-Kotlin AvroKeyboardService   // required for typing
-  ImePrefs                   // mode only
-  KeyboardPanel
-  AvroComposer + AvroEngine
-  ImeEdit                    // enter, grapheme delete, selection
+AvroKeyboardService
+  KeyboardPanel + Layouts
+  AvroComposer / AvroEngine     // typed Banglish only
+  VoiceTyping / SpeechRecognizer // speech, no Avro
+  ImeEdit / ImePrefs
         |
 InputConnection
 ```
-
-The keyboard works with the Flutter activity closed.
