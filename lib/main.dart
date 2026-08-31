@@ -42,16 +42,29 @@ class SetupPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Avro Keyboard')),
       body: ListView(
         padding: const EdgeInsets.all(20),
-        children: const [
-          Text('Step 3 — বাংলা, English, অভ্র',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
-          SizedBox(height: 8),
-          Text(
-            'Enable the IME, then cycle the mode key on the keyboard: '
-            'বাংলা (direct), English, and অভ্র (Banglish). '
-            'In অভ্র mode type ami for আমি. Prefix ` to keep English.',
+        children: [
+          const Text(
+            'Step 3 — বাংলা, English, অভ্র',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 8),
+          const Text(
+            'Enable the IME, then cycle the mode key: বাংলা (direct), '
+            'English, and অভ্র (Banglish). In অভ্র mode type ami '
+            'for আমি. Prefix ` to keep English.',
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: _openSettings,
+            icon: const Icon(Icons.keyboard),
+            label: const Text('Enable keyboard in system settings'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _openPicker,
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text('Choose current keyboard'),
+          ),
         ],
       ),
     );
