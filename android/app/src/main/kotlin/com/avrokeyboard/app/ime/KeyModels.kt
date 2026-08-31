@@ -20,6 +20,7 @@ enum class KeyKind {
     PAGE_LETTERS,
     PAGE_SYMBOLS,
     LANGUAGE,
+    MIC,
 }
 
 data class KeySpec(
@@ -35,4 +36,5 @@ sealed class KeyAction {
     data object Backspace : KeyAction()
     data object Enter : KeyAction()
     data class ModeChanged(val from: KeyboardLanguage, val to: KeyboardLanguage) : KeyAction()
+    data object Mic : KeyAction()
 }

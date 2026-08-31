@@ -67,13 +67,14 @@ object Layouts {
     private fun bottom(language: KeyboardLanguage): List<KeySpec> {
         val dari = if (language == KeyboardLanguage.ENGLISH) "." else "।"
         return listOf(
-            KeySpec(KeyKind.PAGE_SYMBOLS, "123", weight = 1.2f),
-            KeySpec(KeyKind.LANGUAGE, "mode", weight = 1.2f),
-            KeySpec(KeyKind.PAGE_LETTERS, "ABC", weight = 1.1f),
-            KeySpec(KeyKind.CHAR, ",", commit = ",", weight = 0.8f),
-            KeySpec(KeyKind.SPACE, "space", weight = 3.2f, wide = true),
-            KeySpec(KeyKind.CHAR, dari, commit = dari, weight = 0.8f),
-            KeySpec(KeyKind.ENTER, "enter", weight = 1.4f),
+            KeySpec(KeyKind.PAGE_SYMBOLS, "123", weight = 1.05f),
+            KeySpec(KeyKind.LANGUAGE, "mode", weight = 1.05f),
+            KeySpec(KeyKind.MIC, "mic", weight = 1.05f),
+            KeySpec(KeyKind.CHAR, ",", commit = ",", weight = 0.75f),
+            KeySpec(KeyKind.SPACE, "space", weight = 2.9f, wide = true),
+            KeySpec(KeyKind.CHAR, dari, commit = dari, weight = 0.75f),
+            KeySpec(KeyKind.PAGE_LETTERS, "ABC", weight = 0.9f),
+            KeySpec(KeyKind.ENTER, "enter", weight = 1.25f),
         )
     }
 }
