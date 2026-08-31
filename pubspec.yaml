@@ -1,7 +1,7 @@
 name: avro_keyboard
-description: Free open-source Android IME with Flutter settings UI. English + Bengali + Avro phonetic (later steps).
+description: Free Android system keyboard. Bengali, English, Avro phonetic, and device speech-to-text.
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+6
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

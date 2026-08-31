@@ -1,4 +1,4 @@
-name: Debug APK
+name: Build
 
 on:
   workflow_dispatch:
@@ -28,13 +28,26 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Build debug APK
+      - name: Debug APK
         run: |
           flutter build apk --debug
           cp build/app/outputs/flutter-apk/app-debug.apk avro-keyboard-debug.apk
 
+      - name: Release APK
+        run: |
+          flutter build apk --release
+          cp build/app/outputs/flutter-apk/app-release.apk avro-keyboard-release.apk
+
+      - name: Release AAB
+        run: |
+          flutter build appbundle --release
+          cp build/app/outputs/bundle/release/app-release.aab avro-keyboard-release.aab
+
       - uses: actions/upload-artifact@v4
         with:
-          name: avro-keyboard-debug.apk
-          path: avro-keyboard-debug.apk
+          name: avro-keyboard-builds
+          path: |
+            avro-keyboard-debug.apk
+            avro-keyboard-release.apk
+            avro-keyboard-release.aab
           if-no-files-found: error

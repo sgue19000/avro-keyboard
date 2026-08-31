@@ -8,4 +8,9 @@
         android:imeSubtypeMode="keyboard"
         android:imeSubtypeLocale="en_US"
         android:isAsciiCapable="true" />
+    <subtype
+        android:label="@string/subtype_bn"
+        android:imeSubtypeMode="keyboard"
+        android:imeSubtypeLocale="bn_BD"
+        android:isAsciiCapable="false" />
 </input-method>
