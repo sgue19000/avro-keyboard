@@ -1,13 +1,16 @@
 # Architecture
 
 ```
-Flutter settings
+Flutter settings (optional)
+  MethodChannel openInputMethodSettings / openInputMethodPicker
         |
-Kotlin AvroKeyboardService
-  KeyboardPanel (layouts + mode)
-  AvroComposer + AvroEngine     // অভ্র only
+Kotlin AvroKeyboardService   // required for typing
+  ImePrefs                   // mode only
+  KeyboardPanel
+  AvroComposer + AvroEngine
+  ImeEdit                    // enter, grapheme delete, selection
         |
-InputConnection.setComposingText / commitText / deleteSurroundingText
+InputConnection
 ```
 
-Step 4+ should not fold suggestion or STT into AvroEngine.
+The keyboard works with the Flutter activity closed.

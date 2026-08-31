@@ -2,15 +2,13 @@
 
 Free Android system IME. Flutter settings + Kotlin keyboard.
 
-**Step 3/6.** Three modes:
+**Step 4/6.** Production-style InputConnection handling on top of three modes:
 
-- **বাংলা** — direct Bengali layout (consonants, vowels, kars, hasanta, digits)
+- **বাংলা** — direct Bengali
 - **English** — QWERTY
-- **অভ্র** — Banglish phonetic engine (`ami` → আমি)
+- **অভ্র** — Banglish (`ami` → আমি)
 
-Prefix a word with `` ` `` in Avro mode to keep Latin as-is.
-
-## Build
+Mode is remembered locally. Typed text is never stored.
 
 ```bash
 flutter pub get

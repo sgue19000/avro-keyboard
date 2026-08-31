@@ -26,6 +26,7 @@ void main() {
     expect(engine.parse('kemon acho'), 'কেমন আছো');
     expect(engine.parse('amar nam rafi'), 'আমার নাম রাফি');
     expect(engine.parse('ami banglay likhi'), 'আমি বাংলায় লিখি');
+    expect(engine.parse('ami bangla likhi'), 'আমি বাংলা লিখি');
   });
 
   test('english raw fallback with backtick', () {
