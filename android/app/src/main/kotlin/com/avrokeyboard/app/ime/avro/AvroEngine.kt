@@ -1,6 +1,6 @@
 package com.avrokeyboard.app.ime.avro
 
-/** Same rule table as lib/avro/avro_engine.dart — keep in sync. */
+/** Keep in sync with lib/avro/avro_engine.dart */
 class AvroEngine {
     fun parse(input: String): String {
         if (input.isEmpty()) return ""
@@ -12,7 +12,7 @@ class AvroEngine {
             buf.clear()
         }
         for (ch in input) {
-            if (ch.isLetter() && ch.code < 128 || ch == '`') buf.append(ch) else {
+            if ((ch.isLetter() && ch.code < 128) || ch == '`') buf.append(ch) else {
                 flush()
                 out.append(ch)
             }
@@ -51,13 +51,12 @@ class AvroEngine {
         return Hit(1, word[i].toString())
     }
 
-    private fun ok(m: Match, word: String, start: Int, end: Int): Boolean {
-        return if (m.prefix) {
-            if (start == 0) m.negative else check(m, word, start - 1) != m.negative
+    private fun ok(m: Match, word: String, start: Int, end: Int): Boolean =
+        if (m.prefix) {
+            if (start == 0) false else check(m, word, start - 1)
         } else {
-            if (end >= word.length) m.negative else check(m, word, end) != m.negative
+            if (end >= word.length) false else check(m, word, end)
         }
-    }
 
     private fun check(m: Match, word: String, index: Int): Boolean {
         if (index !in word.indices) return false
@@ -65,34 +64,30 @@ class AvroEngine {
         return when (m.kind) {
             Kind.VOWEL -> ch in vowels
             Kind.CONSONANT -> ch in consonants
-            Kind.PUNCT -> ch !in vowels && ch !in consonants
-            Kind.EXACT -> word[index].toString() == m.exact
         }
     }
 
     private fun fixCase(text: String): String = buildString {
-        for (ch in text) {
-            append(if (ch in "OITDNSRZ") ch else ch.lowercaseChar())
-        }
+        for (ch in text) append(if (ch in "OITDNSRZ") ch else ch.lowercaseChar())
     }
 
     private data class Hit(val consumed: Int, val replace: String)
-    private enum class Kind { VOWEL, CONSONANT, PUNCT, EXACT }
-    private data class Match(val prefix: Boolean, val kind: Kind, val negative: Boolean = false, val exact: String? = null)
+    private enum class Kind { VOWEL, CONSONANT }
+    private data class Match(val prefix: Boolean, val kind: Kind)
     private data class Rule(val replace: String, val matches: List<Match>)
     private data class Pat(val find: String, val replace: String, val rules: List<Rule> = emptyList())
 
     companion object {
         private const val vowels = "aeiou"
         private const val consonants = "bcdfghjklmnpqrstvwxyz"
-        private fun pV(neg: Boolean = false) = Match(true, Kind.VOWEL, neg)
-        private fun pC(neg: Boolean = false) = Match(true, Kind.CONSONANT, neg)
-        private fun sC(neg: Boolean = false) = Match(false, Kind.CONSONANT, neg)
-
+        private fun pV() = Match(true, Kind.VOWEL)
+        private fun pC() = Match(true, Kind.CONSONANT)
+        private fun sC() = Match(false, Kind.CONSONANT)
         private val patterns = listOf(
-            Pat("ksh", "ক্ষ"),
+            Pat("ksh", "ক্ষ"), Pat("ggy", "জ্ঞ"), Pat("GG", "জ্ঞ"),
             Pat("cch", "ছ"), Pat("chh", "ছ"),
             Pat("ngo", "ঙ্গ"), Pat("nno", "ন্য"), Pat("nyo", "ন্য"),
+            Pat("sw", "স্ব"),
             Pat("kh", "খ"), Pat("gh", "ঘ"), Pat("ch", "চ"), Pat("jh", "ঝ"),
             Pat("Th", "ঠ"), Pat("Dh", "ঢ"), Pat("th", "থ"), Pat("dh", "ধ"),
             Pat("ph", "ফ"), Pat("bh", "ভ"), Pat("sh", "শ"),
@@ -105,10 +100,7 @@ class AvroEngine {
             Pat("I", "ঈ", listOf(Rule("ী", listOf(pC())))),
             Pat("u", "উ", listOf(Rule("ু", listOf(pC())))),
             Pat("e", "এ", listOf(Rule("ে", listOf(pC())))),
-            Pat("o", "ও", listOf(
-                Rule("", listOf(pC(), sC())),
-                Rule("ো", listOf(pC())),
-            )),
+            Pat("o", "ও", listOf(Rule("", listOf(pC(), sC())), Rule("ো", listOf(pC())))),
             Pat("O", "ও", listOf(Rule("ো", listOf(pC())))),
             Pat("y", "য", listOf(Rule("য়", listOf(pV())))),
             Pat("r", "র", listOf(Rule("্র", listOf(pC())))),
