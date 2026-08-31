@@ -1,5 +1,4 @@
 /// Avro-style Banglish to Bengali engine.
-/// Longest-match patterns plus prefix/suffix context rules.
 class AvroEngine {
   static const vowels = 'aeiou';
   static const consonants = 'bcdfghjklmnpqrstvwxyz';
@@ -29,13 +28,10 @@ class AvroEngine {
 
   String parseWord(String raw) {
     if (raw.isEmpty) return '';
-    if (raw.startsWith('`')) {
-      return raw.substring(1);
-    }
+    if (raw.startsWith('`')) return raw.substring(1);
     final word = _fixCase(raw);
     final exception = _exceptions[word];
     if (exception != null) return exception;
-
     final out = StringBuffer();
     var i = 0;
     while (i < word.length) {
@@ -50,9 +46,7 @@ class AvroEngine {
     for (final p in _patterns) {
       if (i + p.find.length > word.length) continue;
       if (word.substring(i, i + p.find.length) != p.find) continue;
-      if (p.rules.isEmpty) {
-        return _Hit(p.find.length, p.replace);
-      }
+      if (p.rules.isEmpty) return _Hit(p.find.length, p.replace);
       for (final rule in p.rules) {
         if (rule.matches.every((m) => _ok(m, word, i, i + p.find.length))) {
           return _Hit(p.find.length, rule.replace);
@@ -101,19 +95,14 @@ class AvroEngine {
 
 class AvroComposer {
   AvroComposer({AvroEngine? engine}) : engine = engine ?? AvroEngine();
-
   final AvroEngine engine;
   String buffer = '';
-
   String get preview => engine.parse(buffer);
-
   void type(String ch) => buffer += ch;
-
   void backspace() {
     if (buffer.isEmpty) return;
     buffer = buffer.substring(0, buffer.length - 1);
   }
-
   String commitWord() {
     final text = preview;
     buffer = '';
@@ -154,11 +143,14 @@ const _pc = _Kind.consonant;
 
 const _patterns = <_Pat>[
   _Pat('ksh', 'ক্ষ'),
+  _Pat('ggy', 'জ্ঞ'),
+  _Pat('GG', 'জ্ঞ'),
   _Pat('cch', 'ছ'),
   _Pat('chh', 'ছ'),
   _Pat('ngo', 'ঙ্গ'),
   _Pat('nno', 'ন্য'),
   _Pat('nyo', 'ন্য'),
+  _Pat('sw', 'স্ব'),
   _Pat('kh', 'খ'),
   _Pat('gh', 'ঘ'),
   _Pat('ch', 'চ'),
