@@ -1,7 +1,5 @@
 /// Avro-style Banglish to Bengali engine.
-///
 /// Longest-match patterns plus prefix/suffix context rules.
-/// Not a word dictionary. A few Avro spelling exceptions sit on top.
 class AvroEngine {
   static const vowels = 'aeiou';
   static const consonants = 'bcdfghjklmnpqrstvwxyz';
@@ -67,32 +65,20 @@ class AvroEngine {
 
   bool _ok(_Match m, String word, int start, int end) {
     if (m.prefix) {
-      if (start == 0) {
-        return m.negative;
-      }
-      return _check(m, word, start - 1) != m.negative;
-    } else {
-      if (end >= word.length) {
-        return m.negative;
-      }
-      return _check(m, word, end) != m.negative;
+      if (start == 0) return false;
+      return _check(m, word, start - 1);
     }
+    if (end >= word.length) return false;
+    return _check(m, word, end);
   }
 
   bool _check(_Match m, String word, int index) {
     if (index < 0 || index >= word.length) return false;
     final ch = word[index].toLowerCase();
-    switch (m.kind) {
-      case _Kind.vowel:
-        return AvroEngine.vowels.contains(ch);
-      case _Kind.consonant:
-        return AvroEngine.consonants.contains(ch);
-      case _Kind.punct:
-        return !AvroEngine.vowels.contains(ch) &&
-            !AvroEngine.consonants.contains(ch);
-      case _Kind.exact:
-        return word[index] == m.exact;
-    }
+    return switch (m.kind) {
+      _Kind.vowel => AvroEngine.vowels.contains(ch),
+      _Kind.consonant => AvroEngine.consonants.contains(ch),
+    };
   }
 
   String _fixCase(String text) {
@@ -141,20 +127,13 @@ class _Hit {
   final String replace;
 }
 
-enum _Kind { vowel, consonant, punct, exact }
+enum _Kind { vowel, consonant }
 
 class _Match {
-  const _Match.prefix(_Kind k, {this.negative = false, this.exact})
-      : prefix = true,
-        kind = k;
-  const _Match.suffix(_Kind k, {this.negative = false, this.exact})
-      : prefix = false,
-        kind = k;
-
+  const _Match.prefix(this.kind) : prefix = true;
+  const _Match.suffix(this.kind) : prefix = false;
   final bool prefix;
   final _Kind kind;
-  final bool negative;
-  final String? exact;
 }
 
 class _Rule {
