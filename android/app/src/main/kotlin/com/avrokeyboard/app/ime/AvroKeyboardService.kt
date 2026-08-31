@@ -1,27 +1,39 @@
 package com.avrokeyboard.app.ime
 
+import android.content.Intent
 import android.content.res.Configuration
 import android.inputmethodservice.InputMethodService
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.avrokeyboard.app.ime.avro.AvroComposer
+import com.avrokeyboard.app.ime.voice.VoiceCallbacks
+import com.avrokeyboard.app.ime.voice.VoicePermissionActivity
+import com.avrokeyboard.app.ime.voice.VoiceState
+import com.avrokeyboard.app.ime.voice.VoiceTyping
 
-/**
- * System IME. Never logs or stores typed text.
- * Flutter settings can stay closed; this service is self-contained.
- */
-class AvroKeyboardService : InputMethodService() {
+class AvroKeyboardService : InputMethodService(), VoiceCallbacks {
 
     private var panel: KeyboardPanel? = null
     private val composer = AvroComposer()
     private lateinit var prefs: ImePrefs
     private var editorInfo: EditorInfo? = null
     private var composingActive = false
+    private var voiceComposing = false
+    private var voice: VoiceTyping? = null
 
     override fun onCreate() {
         super.onCreate()
         prefs = ImePrefs(this)
+        voice = VoiceTyping(applicationContext, this)
+        VoicePermissionActivity.onResult = { granted ->
+            if (granted) {
+                voice?.startAfterPermission(panel?.language ?: KeyboardLanguage.ENGLISH)
+            } else {
+                panel?.setVoiceState(VoiceState.ERROR, "permission")
+                panel?.setVoiceState(VoiceState.IDLE, null)
+            }
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -34,9 +46,10 @@ class AvroKeyboardService : InputMethodService() {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         editorInfo = attribute
-        // New field: drop in-memory compose. Do not write into the old view.
         composer.clear()
         composingActive = false
+        voiceComposing = false
+        voice?.stop(commitPartial = false)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -47,14 +60,23 @@ class AvroKeyboardService : InputMethodService() {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        voice?.stop(commitPartial = true)
         finishAvro(commit = true)
         super.onFinishInputView(finishingInput)
     }
 
     override fun onFinishInput() {
+        voice?.stop(commitPartial = false)
         finishAvro(commit = true)
         editorInfo = null
         super.onFinishInput()
+    }
+
+    override fun onDestroy() {
+        VoicePermissionActivity.onResult = null
+        voice?.destroy()
+        voice = null
+        super.onDestroy()
     }
 
     override fun onUpdateSelection(
@@ -79,6 +101,9 @@ class AvroKeyboardService : InputMethodService() {
     }
 
     private fun handleAction(action: KeyAction) {
+        if (action !is KeyAction.Mic && voice?.session?.isActive == true) {
+            voice?.stop(commitPartial = true)
+        }
         val ic: InputConnection = currentInputConnection ?: return
         val mode = panel?.language ?: KeyboardLanguage.ENGLISH
         when (action) {
@@ -112,7 +137,39 @@ class AvroKeyboardService : InputMethodService() {
                 finishAvro(commit = true)
                 prefs.saveMode(action.to)
             }
+            KeyAction.Mic -> {
+                finishAvro(commit = true)
+                if (ImeEdit.isPassword(editorInfo)) {
+                    panel?.setVoiceState(VoiceState.ERROR, "password")
+                    panel?.setVoiceState(VoiceState.IDLE, null)
+                    return
+                }
+                voice?.toggle(mode)
+            }
         }
+    }
+
+    override fun onVoiceState(state: VoiceState, hint: String?) {
+        panel?.setVoiceState(state, hint)
+    }
+
+    override fun onVoicePartial(text: String) {
+        val ic = currentInputConnection ?: return
+        ic.setComposingText(text, 1)
+        voiceComposing = true
+    }
+
+    override fun onVoiceFinal(text: String) {
+        val ic = currentInputConnection ?: return
+        ic.commitText("$text ", 1)
+        voiceComposing = false
+    }
+
+    override fun onNeedPermission() {
+        val intent = Intent(this, VoicePermissionActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
     }
 
     private fun handleAvro(ic: InputConnection, text: String) {
@@ -136,9 +193,8 @@ class AvroKeyboardService : InputMethodService() {
     private fun finishAvro(commit: Boolean) {
         val ic = currentInputConnection
         if (composer.isComposing && ic != null) {
-            if (commit) {
-                ic.commitText(composer.commitWord(), 1)
-            } else {
+            if (commit) ic.commitText(composer.commitWord(), 1)
+            else {
                 ic.finishComposingText()
                 composer.clear()
             }
@@ -146,5 +202,9 @@ class AvroKeyboardService : InputMethodService() {
             composer.clear()
         }
         composingActive = false
+        if (voiceComposing && ic != null && commit) {
+            ic.finishComposingText()
+            voiceComposing = false
+        }
     }
 }

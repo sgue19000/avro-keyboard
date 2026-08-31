@@ -13,7 +13,7 @@ class VoicePermissionActivity : Activity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         ) {
-            setResult(RESULT_OK)
+            onResult?.invoke(true)
             finish()
             return
         }
@@ -25,13 +25,12 @@ class VoicePermissionActivity : Activity() {
         permissions: Array<out String>,
         grantResults: IntArray,
     ) {
-        setResult(
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                RESULT_OK
-            } else {
-                RESULT_CANCELED
-            },
-        )
+        val ok = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        onResult?.invoke(ok)
         finish()
+    }
+
+    companion object {
+        var onResult: ((Boolean) -> Unit)? = null
     }
 }
