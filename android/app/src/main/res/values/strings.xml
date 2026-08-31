@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ime_name">Avro Keyboard</string>
-    <string name="subtype_en">English (US)</string>
+    <string name="subtype_en">English</string>
+    <string name="subtype_bn">বাংলা</string>
 </resources>
