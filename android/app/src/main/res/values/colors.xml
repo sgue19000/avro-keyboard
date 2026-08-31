@@ -2,7 +2,8 @@
 <resources>
     <color name="launch_background">#1565C0</color>
     <color name="ic_launcher_background">#1565C0</color>
-    <color name="keyboard_background">#ECEFF1</color>
+    <color name="keyboard_background">#E8EAED</color>
     <color name="key_fill">#FFFFFF</color>
-    <color name="key_text">#212121</color>
+    <color name="key_special">#D3D7DE</color>
+    <color name="key_text">#1B1D21</color>
 </resources>

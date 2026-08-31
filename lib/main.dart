@@ -3,15 +3,10 @@ import 'package:flutter/services.dart';
 
 /// Settings / onboarding host for the IME.
 ///
-/// Architecture (do not invert this):
-///   Flutter  →  this app (enable instructions, later themes / Avro options)
-///   Kotlin   →  [AvroKeyboardService] InputMethodService
+/// Architecture:
+///   Flutter  →  this app (enable instructions, later Avro options)
+///   Kotlin   →  AvroKeyboardService + KeyboardPanel
 ///   Android  →  InputConnection → any app receiving typed text
-///
-/// Flutter cannot be a system IME by itself. Typed text is committed only
-/// from the native InputMethodService. Later steps may render Flutter UI
-/// *inside* that service; they must still call InputConnection on the
-/// Kotlin side.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const AvroKeyboardApp());
@@ -58,15 +53,14 @@ class SetupPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            'Step 1 foundation',
+            'Step 2 — keyboard UI',
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           const Text(
-            'This app registers a real Android system keyboard '
-            '(InputMethodService). Enable it, then select it as the '
-            'current keyboard. The on-screen keys are a minimal QWERTY '
-            'stub — Bengali and Avro come in later steps.',
+            'The system IME now has a full English QWERTY, shift, '
+            'numbers/symbols, and an EN / Bangla layout switch. '
+            'Bangla is a placeholder only — Avro phonetic typing is Step 3.',
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
