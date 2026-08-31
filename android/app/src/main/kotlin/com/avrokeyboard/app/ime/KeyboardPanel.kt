@@ -10,6 +10,7 @@ import android.os.Build
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
+import com.avrokeyboard.app.ime.voice.VoiceState
 
 class KeyboardPanel(
     context: Context,
@@ -21,6 +22,8 @@ class KeyboardPanel(
     private var page = KeyboardPage.LETTERS
     private var shiftOn = false
     private var pressedIndex = -1
+    private var voiceState = VoiceState.IDLE
+    private var voiceHint: String? = null
     private var rows: List<List<KeySpec>> = Layouts.english(false)
     private val keyRects = mutableListOf<RectF>()
     private val keyMap = mutableListOf<KeySpec>()
@@ -29,6 +32,7 @@ class KeyboardPanel(
     private val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val specialPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val micPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.NORMAL)
@@ -48,6 +52,12 @@ class KeyboardPanel(
         night = isNight()
         applyPalette()
         requestLayout()
+        invalidate()
+    }
+
+    fun setVoiceState(state: VoiceState, hint: String?) {
+        voiceState = state
+        voiceHint = hint
         invalidate()
     }
 
@@ -79,11 +89,13 @@ class KeyboardPanel(
         layoutKeys()
         hintPaint.textSize = sp(13f)
         hintPaint.color = if (night) 0xFFB0B6C0.toInt() else 0xFF3C4043.toInt()
-        canvas.drawText(modeLabel(), width / 2f, dp(16f), hintPaint)
+        canvas.drawText(bannerText(), width / 2f, dp(16f), hintPaint)
         keyMap.forEachIndexed { i, spec ->
             val rect = keyRects[i]
+            val listening = spec.kind == KeyKind.MIC && voiceState != VoiceState.IDLE && voiceState != VoiceState.ERROR
             val paint = when {
                 i == pressedIndex -> activePaint
+                listening -> micPaint
                 spec.kind == KeyKind.SHIFT && shiftOn -> activePaint
                 spec.kind == KeyKind.LANGUAGE -> activePaint
                 spec.kind == KeyKind.CHAR || spec.kind == KeyKind.SPACE -> keyPaint
@@ -139,6 +151,7 @@ class KeyboardPanel(
             KeyKind.SPACE -> onAction(KeyAction.Commit(" "))
             KeyKind.BACKSPACE -> onAction(KeyAction.Backspace)
             KeyKind.ENTER -> onAction(KeyAction.Enter)
+            KeyKind.MIC -> onAction(KeyAction.Mic)
             KeyKind.SHIFT -> {
                 shiftOn = !shiftOn
                 rebuild()
@@ -197,10 +210,19 @@ class KeyboardPanel(
 
     private fun hit(x: Float, y: Float): Int = keyRects.indexOfFirst { it.contains(x, y) }
 
-    private fun modeLabel(): String = when (language) {
-        KeyboardLanguage.ENGLISH -> "বাংলা  |  English  |  অভ্র"
-        KeyboardLanguage.BANGLA -> "[বাংলা]  English  অভ্র"
-        KeyboardLanguage.AVRO -> "বাংলা  English  [অভ্র]"
+    private fun bannerText(): String {
+        val base = when (language) {
+            KeyboardLanguage.ENGLISH -> "বাংলা  |  English  |  অভ্র"
+            KeyboardLanguage.BANGLA -> "[বাংলা]  English  অভ্র"
+            KeyboardLanguage.AVRO -> "বাংলা  English  [অভ্র]"
+        }
+        return when (voiceState) {
+            VoiceState.LISTENING -> "listening"
+            VoiceState.RECOGNIZING -> "recognizing"
+            VoiceState.REQUESTING_PERMISSION -> "mic permission"
+            VoiceState.ERROR -> voiceHint ?: "mic error"
+            else -> base
+        }
     }
 
     private fun displayLabel(spec: KeySpec): String = when (spec.kind) {
@@ -215,6 +237,7 @@ class KeyboardPanel(
             KeyboardLanguage.BANGLA -> "বা"
             KeyboardLanguage.AVRO -> "অভ্র"
         }
+        KeyKind.MIC -> if (voiceState == VoiceState.IDLE) "\uD83C\uDFA4" else "\u25A0"
         KeyKind.PAGE_SYMBOLS -> "123"
         KeyKind.PAGE_LETTERS -> if (language == KeyboardLanguage.BANGLA) "কখ" else "ABC"
         KeyKind.BACKSPACE -> "DEL"
@@ -224,6 +247,7 @@ class KeyboardPanel(
     }
 
     private fun applyPalette() {
+        micPaint.color = 0xFFE53935.toInt()
         if (night) {
             bgPaint.color = 0xFF121418.toInt()
             keyPaint.color = 0xFF2A2E36.toInt()
