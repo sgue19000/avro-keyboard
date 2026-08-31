@@ -7,27 +7,21 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
-import android.os.SystemClock
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
-import kotlin.math.min
 
-/**
- * Drawn keyboard used by the IME. Not a Flutter widget.
- * Layout state stays here so Step 3 can swap the BANGLA letter page
- * for an Avro-aware page without touching InputConnection plumbing.
- */
 class KeyboardPanel(
     context: Context,
     private val onAction: (KeyAction) -> Unit,
 ) : View(context) {
 
-    private var language = KeyboardLanguage.ENGLISH
+    var language = KeyboardLanguage.ENGLISH
+        private set
     private var page = KeyboardPage.LETTERS
     private var shiftOn = false
     private var pressedIndex = -1
-    private var rows: List<List<KeySpec>> = englishLetterRows(shiftOn)
+    private var rows: List<List<KeySpec>> = Layouts.english(false)
     private val keyRects = mutableListOf<RectF>()
     private val keyMap = mutableListOf<KeySpec>()
 
@@ -37,19 +31,16 @@ class KeyboardPanel(
     private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
     }
     private val hintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     }
-
     private var night = isNight()
 
     init {
         applyPalette()
         isClickable = true
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
         contentDescription = "Avro Keyboard"
     }
 
@@ -64,36 +55,30 @@ class KeyboardPanel(
         val rowH = dp(48f)
         val gap = dp(6f)
         val pad = dp(8f)
-        val banner = if (language == KeyboardLanguage.BANGLA && page == KeyboardPage.LETTERS) dp(22f) else 0f
-        val rowsCount = rows.size
-        val height = (pad * 2 + banner + rowsCount * rowH + (rowsCount - 1) * gap + navInset()).toInt()
+        val banner = dp(22f)
+        val height = (pad * 2 + banner + rows.size * rowH + (rows.size - 1) * gap + navInset()).toInt()
         setMeasuredDimension(width, height)
     }
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
         layoutKeys()
-        if (language == KeyboardLanguage.BANGLA && page == KeyboardPage.LETTERS) {
-            hintPaint.textSize = sp(12f)
-            canvas.drawText(
-                "Bangla layout placeholder — Avro engine in Step 3",
-                width / 2f,
-                dp(18f),
-                hintPaint,
-            )
-        }
+        hintPaint.textSize = sp(13f)
+        hintPaint.color = if (night) 0xFFB0B6C0.toInt() else 0xFF3C4043.toInt()
+        canvas.drawText(modeLabel(), width / 2f, dp(16f), hintPaint)
         keyMap.forEachIndexed { i, spec ->
             val rect = keyRects[i]
             val paint = when {
                 i == pressedIndex -> activePaint
                 spec.kind == KeyKind.SHIFT && shiftOn -> activePaint
+                spec.kind == KeyKind.LANGUAGE -> activePaint
                 spec.kind == KeyKind.CHAR || spec.kind == KeyKind.SPACE -> keyPaint
                 else -> specialPaint
             }
             canvas.drawRoundRect(rect, dp(8f), dp(8f), paint)
-            textPaint.textSize = if (spec.kind == KeyKind.CHAR) sp(20f) else sp(14f)
-            textPaint.color = if (night) 0xFFF2F4F8.toInt() else 0xFF1B1D21.toInt()
             val label = displayLabel(spec)
+            textPaint.textSize = if (label.length <= 2) sp(18f) else sp(12f)
+            textPaint.color = if (night) 0xFFF2F4F8.toInt() else 0xFF1B1D21.toInt()
             val cy = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f
             canvas.drawText(label, rect.centerX(), cy, textPaint)
         }
@@ -101,13 +86,12 @@ class KeyboardPanel(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                val idx = hit(event.x, event.y)
-                pressedIndex = idx
+            MotionEvent.ACTION_DOWN -> {
+                pressedIndex = hit(event.x, event.y)
                 invalidate()
                 return true
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+            MotionEvent.ACTION_UP -> {
                 val idx = pressedIndex
                 pressedIndex = -1
                 invalidate()
@@ -132,9 +116,8 @@ class KeyboardPanel(
     private fun dispatch(spec: KeySpec) {
         when (spec.kind) {
             KeyKind.CHAR -> {
-                val text = spec.commit ?: spec.label
-                onAction(KeyAction.Commit(text))
-                if (shiftOn && page == KeyboardPage.LETTERS && language == KeyboardLanguage.ENGLISH) {
+                onAction(KeyAction.Commit(spec.commit ?: spec.label))
+                if (shiftOn && language == KeyboardLanguage.ENGLISH && page == KeyboardPage.LETTERS) {
                     shiftOn = false
                     rebuild()
                 }
@@ -156,10 +139,10 @@ class KeyboardPanel(
                 rebuild()
             }
             KeyKind.LANGUAGE -> {
-                language = if (language == KeyboardLanguage.ENGLISH) {
-                    KeyboardLanguage.BANGLA
-                } else {
-                    KeyboardLanguage.ENGLISH
+                language = when (language) {
+                    KeyboardLanguage.ENGLISH -> KeyboardLanguage.BANGLA
+                    KeyboardLanguage.BANGLA -> KeyboardLanguage.AVRO
+                    KeyboardLanguage.AVRO -> KeyboardLanguage.ENGLISH
                 }
                 page = KeyboardPage.LETTERS
                 shiftOn = false
@@ -170,9 +153,10 @@ class KeyboardPanel(
 
     private fun rebuild() {
         rows = when {
-            page == KeyboardPage.SYMBOLS -> symbolRows()
-            language == KeyboardLanguage.BANGLA -> banglaPlaceholderRows()
-            else -> englishLetterRows(shiftOn)
+            page == KeyboardPage.SYMBOLS -> Layouts.symbols(language)
+            language == KeyboardLanguage.BANGLA && shiftOn -> Layouts.banglaVowels()
+            language == KeyboardLanguage.BANGLA -> Layouts.banglaConsonants()
+            else -> Layouts.english(shiftOn)
         }
         requestLayout()
         invalidate()
@@ -184,7 +168,7 @@ class KeyboardPanel(
         val pad = dp(6f)
         val gap = dp(5f)
         val rowH = dp(48f)
-        var top = pad + if (language == KeyboardLanguage.BANGLA && page == KeyboardPage.LETTERS) dp(22f) else 0f
+        var top = pad + dp(22f)
         val innerW = width - pad * 2
         rows.forEach { row ->
             val totalWeight = row.sumOf { it.weight.toDouble() }.toFloat()
@@ -199,14 +183,28 @@ class KeyboardPanel(
         }
     }
 
-    private fun hit(x: Float, y: Float): Int =
-        keyRects.indexOfFirst { it.contains(x, y) }
+    private fun hit(x: Float, y: Float): Int = keyRects.indexOfFirst { it.contains(x, y) }
+
+    private fun modeLabel(): String = when (language) {
+        KeyboardLanguage.ENGLISH -> "বাংলা  |  English  |  অভ্র"
+        KeyboardLanguage.BANGLA -> "[বাংলা]  English  অভ্র"
+        KeyboardLanguage.AVRO -> "বাংলা  English  [অভ্র]"
+    }
 
     private fun displayLabel(spec: KeySpec): String = when (spec.kind) {
-        KeyKind.SHIFT -> if (shiftOn) "SHIFT" else "shift"
-        KeyKind.LANGUAGE -> if (language == KeyboardLanguage.ENGLISH) "EN" else "\u09AC\u09BE"
+        KeyKind.SHIFT -> when {
+            language == KeyboardLanguage.BANGLA && shiftOn -> "ক"
+            language == KeyboardLanguage.BANGLA -> "স্বর"
+            shiftOn -> "SHIFT"
+            else -> "shift"
+        }
+        KeyKind.LANGUAGE -> when (language) {
+            KeyboardLanguage.ENGLISH -> "EN"
+            KeyboardLanguage.BANGLA -> "বা"
+            KeyboardLanguage.AVRO -> "অভ্র"
+        }
         KeyKind.PAGE_SYMBOLS -> "123"
-        KeyKind.PAGE_LETTERS -> "ABC"
+        KeyKind.PAGE_LETTERS -> if (language == KeyboardLanguage.BANGLA) "কখ" else "ABC"
         KeyKind.BACKSPACE -> "DEL"
         KeyKind.ENTER -> "enter"
         KeyKind.SPACE -> ""
@@ -219,20 +217,17 @@ class KeyboardPanel(
             keyPaint.color = 0xFF2A2E36.toInt()
             specialPaint.color = 0xFF1C2026.toInt()
             activePaint.color = 0xFF3D6FD9.toInt()
-            hintPaint.color = 0xFFB0B6C0.toInt()
         } else {
             bgPaint.color = 0xFFE8EAED.toInt()
             keyPaint.color = 0xFFFFFFFF.toInt()
             specialPaint.color = 0xFFD3D7DE.toInt()
             activePaint.color = 0xFFBBDEFB.toInt()
-            hintPaint.color = 0xFF5F6368.toInt()
         }
     }
 
-    private fun isNight(): Boolean {
-        val mode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return mode == Configuration.UI_MODE_NIGHT_YES
-    }
+    private fun isNight(): Boolean =
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
+            Configuration.UI_MODE_NIGHT_YES
 
     private fun navInset(): Float {
         val insets = rootWindowInsets ?: return dp(8f)
@@ -244,78 +239,9 @@ class KeyboardPanel(
         }.coerceAtLeast(dp(6f))
     }
 
-    private fun dp(value: Float): Float =
-        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, resources.displayMetrics)
+    private fun dp(v: Float) =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics)
 
-    private fun sp(value: Float): Float =
-        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, value, resources.displayMetrics)
-
-    companion object {
-        private fun c(label: String, weight: Float = 1f) =
-            KeySpec(KeyKind.CHAR, label, commit = label, weight = weight)
-
-        fun englishLetterRows(shift: Boolean): List<List<KeySpec>> {
-            fun row(chars: String) = chars.map { ch ->
-                val shown = if (shift) ch.uppercaseChar().toString() else ch.toString()
-                c(shown)
-            }
-            return listOf(
-                row("qwertyuiop"),
-                row("asdfghjkl"),
-                listOf(
-                    KeySpec(KeyKind.SHIFT, "shift", weight = 1.4f),
-                ) + row("zxcvbnm") + listOf(
-                    KeySpec(KeyKind.BACKSPACE, "DEL", weight = 1.4f),
-                ),
-                listOf(
-                    KeySpec(KeyKind.PAGE_SYMBOLS, "123", weight = 1.3f),
-                    KeySpec(KeyKind.LANGUAGE, "EN", weight = 1.1f),
-                    KeySpec(KeyKind.CHAR, ",", commit = ",", weight = 0.9f),
-                    KeySpec(KeyKind.SPACE, "space", weight = 3.6f, wide = true),
-                    KeySpec(KeyKind.CHAR, ".", commit = ".", weight = 0.9f),
-                    KeySpec(KeyKind.ENTER, "enter", weight = 1.5f),
-                ),
-            )
-        }
-
-        fun symbolRows(): List<List<KeySpec>> = listOf(
-            "1234567890".map { c(it.toString()) },
-            listOf("@", "#", "$", "%", "&", "*", "-", "+", "(", ")").map { c(it) },
-            listOf("!", "?", "'", "\"", ":", ";", "/", "_").map { c(it) } +
-                listOf(KeySpec(KeyKind.BACKSPACE, "DEL", weight = 1.4f)),
-            listOf(
-                KeySpec(KeyKind.PAGE_LETTERS, "ABC", weight = 1.3f),
-                KeySpec(KeyKind.LANGUAGE, "EN", weight = 1.1f),
-                KeySpec(KeyKind.CHAR, ",", commit = ",", weight = 0.9f),
-                KeySpec(KeyKind.SPACE, "space", weight = 3.6f, wide = true),
-                KeySpec(KeyKind.CHAR, ".", commit = ".", weight = 0.9f),
-                KeySpec(KeyKind.ENTER, "enter", weight = 1.5f),
-            ),
-        )
-
-        /** Visible BN page so EN ↔ বাংলা can switch. Not Avro. */
-        fun banglaPlaceholderRows(): List<List<KeySpec>> {
-            val row1 = listOf("ক", "খ", "গ", "ঘ", "চ", "ছ", "ট", "ঠ", "ত", "থ")
-            val row2 = listOf("দ", "ন", "প", "ব", "ম", "য", "র", "ল", "শ")
-            val row3 = listOf("স", "হ", "আ", "ই", "উ", "এ", "ও")
-            return listOf(
-                row1.map { c(it) },
-                row2.map { c(it) },
-                listOf(KeySpec(KeyKind.SHIFT, "", weight = 1.2f)) +
-                    row3.map { c(it) } +
-                    listOf(KeySpec(KeyKind.BACKSPACE, "DEL", weight = 1.4f)),
-                listOf(
-                    KeySpec(KeyKind.PAGE_SYMBOLS, "123", weight = 1.3f),
-                    KeySpec(KeyKind.LANGUAGE, "BN", weight = 1.1f),
-                    KeySpec(KeyKind.CHAR, ",", commit = ",", weight = 0.9f),
-                    KeySpec(KeyKind.SPACE, "space", weight = 3.6f, wide = true),
-                    KeySpec(KeyKind.CHAR, "।", commit = "।", weight = 0.9f),
-                    KeySpec(KeyKind.ENTER, "enter", weight = 1.5f),
-                ),
-            )
-        }
-    }
-
-    @Suppress("unused")
-    private val touchStamp = SystemClock.uptimeMillis()
+    private fun sp(v: Float) =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, v, resources.displayMetrics)
 }
