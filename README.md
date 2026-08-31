@@ -1,15 +1,14 @@
 # Avro Keyboard
 
-Free Android system keyboard. Flutter settings UI + Kotlin IME.
+Free Android system IME. Flutter settings + Kotlin keyboard.
 
-**Step 2/6.** English QWERTY with shift, symbols, and an EN/Bangla layout
-switch. Bangla is a placeholder. Avro phonetic conversion is not implemented yet.
+**Step 3/6.** Three modes:
 
-## Enable
+- **বাংলা** — direct Bengali layout (consonants, vowels, kars, hasanta, digits)
+- **English** — QWERTY
+- **অভ্র** — Banglish phonetic engine (`ami` → আমি)
 
-1. Install the debug APK.
-2. Open **Avro Keyboard** → **Enable keyboard in system settings**.
-3. Turn on **Avro Keyboard**, then select it.
+Prefix a word with `` ` `` in Avro mode to keep Latin as-is.
 
 ## Build
 

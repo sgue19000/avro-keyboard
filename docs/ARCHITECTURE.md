@@ -1,20 +1,13 @@
-# Avro Keyboard architecture
+# Architecture
 
 ```
-Flutter application (lib/)
-  settings / enable IME
+Flutter settings
         |
-        v
-Kotlin MainActivity (MethodChannel only)
+Kotlin AvroKeyboardService
+  KeyboardPanel (layouts + mode)
+  AvroComposer + AvroEngine     // অভ্র only
         |
-        v
-Kotlin AvroKeyboardService : InputMethodService
-  KeyboardPanel (drawn keys, layout state)
-        |
-        v
-InputConnection — any Android app
+InputConnection.setComposingText / commitText / deleteSurroundingText
 ```
 
-Language state lives on `KeyboardPanel` (`KeyboardLanguage`, `KeyboardPage`).
-Step 3 should wrap `KeyAction.Commit` when language is BANGLA; do not move
-commit into Flutter.
+Step 4+ should not fold suggestion or STT into AvroEngine.
