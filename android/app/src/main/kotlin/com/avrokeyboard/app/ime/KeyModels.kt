@@ -1,13 +1,9 @@
 package com.avrokeyboard.app.ime
 
-/**
- * IME-side key model. Flutter never sees these events.
- * Step 3 will attach an Avro converter in front of [KeyAction.Commit]
- * when [KeyboardLanguage.BANGLA] is active — not here.
- */
 enum class KeyboardLanguage {
     ENGLISH,
     BANGLA,
+    AVRO,
 }
 
 enum class KeyboardPage {
